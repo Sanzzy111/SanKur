@@ -1,0 +1,756 @@
+
+
+pcall(function()
+
+if not game.Players.LocalPlayer.Character or game.Players.LocalPlayer.Character:WaitForChild("Humanoid").RigType ~= Enum.HumanoidRigType.R15 then 
+    game.StarterGui:SetCore("SendNotification", {Title = "R6", Text = "You're on R6, bro. Change to R15!", Duration = 60})
+    return
+end
+
+local st = os.clock()
+local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local camera = workspace.CurrentCamera
+
+cloneref = cloneref or function(o) return o end
+local SanGoGui = cloneref(game:GetService("CoreGui")) or game:GetService("CoreGui") or game.Players.LocalPlayer:WaitForChild("PlayerGui")
+
+-- ========================================
+-- PENCEGAHAN DOUBLE EXECUTION
+-- ========================================
+local guiName = "SanVerificator"
+if SanGoGui:FindFirstChild(guiName) then
+    local existingGui = SanGoGui:FindFirstChild(guiName)
+    if existingGui then
+        existingGui:Destroy()
+    end
+    task.wait(0.1)
+end
+
+local verificatorGui = Instance.new("ScreenGui")
+verificatorGui.Name = guiName
+verificatorGui.Parent = SanGoGui
+
+-- ========================================
+-- NOTIFICATION SYSTEM
+-- ========================================
+local Notifbro = {}
+function Notify(titletxt, text, time)
+    coroutine.wrap(function()
+        local GUI = Instance.new("ScreenGui")
+        local Main = Instance.new("Frame", GUI)
+        local title = Instance.new("TextLabel", Main)
+        local message = Instance.new("TextLabel", Main)
+
+        GUI.Name = "BackgroundNotif"
+        GUI.Parent = SanGoGui
+
+        local sw = workspace.CurrentCamera.ViewportSize.X
+        local sh = workspace.CurrentCamera.ViewportSize.Y
+        local nh = sh / 7
+        local nw = sw / 5
+
+        Main.Name = "MainFrame"
+        Main.BackgroundColor3 = Color3.new(0.156863, 0.156863, 0.156863)
+        Main.BackgroundTransparency = 0.2
+        Main.BorderSizePixel = 0
+        Main.Size = UDim2.new(0, nw, 0, nh)
+
+        title.BackgroundColor3 = Color3.new(0, 0, 0)
+        title.BackgroundTransparency = 0.9
+        title.Size = UDim2.new(1, 0, 0, nh / 2)
+        title.Font = Enum.Font.GothamBold
+        title.Text = titletxt
+        title.TextColor3 = Color3.new(1, 1, 1)
+        title.TextScaled = true
+
+        message.BackgroundColor3 = Color3.new(0, 0, 0)
+        message.BackgroundTransparency = 1
+        message.Position = UDim2.new(0, 0, 0, nh / 2)
+        message.Size = UDim2.new(1, 0, 1, -nh / 2)
+        message.Font = Enum.Font.Gotham
+        message.Text = text
+        message.TextColor3 = Color3.new(1, 1, 1)
+        message.TextScaled = true
+
+        local offset = 50
+        for _, notif in ipairs(Notifbro) do
+            offset = offset + notif.Size.Y.Offset + 10
+        end
+
+        Main.Position = UDim2.new(1, 5, 0, offset)
+        table.insert(Notifbro, Main)
+
+        task.wait(0.1)
+        Main:TweenPosition(UDim2.new(1, -nw, 0, offset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
+        Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.5, true)
+        task.wait(0.1)
+        Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.2, true)
+
+        task.wait(time)
+
+        Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
+        task.wait(0.2)
+        Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
+        task.wait(0.2)
+        Main:TweenPosition(UDim2.new(1, 5, 0, offset), Enum.EasingDirection.In, Enum.EasingStyle.Bounce, 0.5, true)
+        task.wait(0.1)
+
+        GUI:Destroy()
+        for i, notif in ipairs(Notifbro) do
+            if notif == Main then
+                table.remove(Notifbro, i)
+                break
+            end
+        end
+
+        for i, notif in ipairs(Notifbro) do
+            local newOffset = 50 + (nh + 10) * (i - 1)
+            notif:TweenPosition(UDim2.new(1, -nw, 0, newOffset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
+        end
+    end)()
+end
+
+task.wait(0.1)
+
+-- ========================================
+-- ICON DEFINITIONS
+-- ========================================
+local CategoryIcons = {
+    Idle = "🧍",
+    Walk = "🚶",
+    Run = "🏃",
+    Jump = "🦘",
+    Fall = "🪂",
+    Climb = "🧗",
+    Swim = "🏊",
+    SwimIdle = "🌊",
+    Emote = "😄",
+    Donate = "💰"
+}
+
+-- ========================================
+-- HELPER FUNCTIONS
+-- ========================================
+local function getScaledSize(relativeWidth, relativeHeight)
+    local viewportSize = camera.ViewportSize
+    return UDim2.new(0, math.floor(viewportSize.X * relativeWidth), 0, math.floor(viewportSize.Y * relativeHeight))
+end
+
+-- ========================================
+-- MAIN UI CREATION
+-- ========================================
+local core = cloneref(game.CoreGui)
+local old = core:FindFirstChild("DraggableGui")
+if old then old:Destroy() end
+
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "DraggableGui"
+screenGui.Parent = core
+
+-- Toggle Button (Icon Mode)
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Text = "📱"
+toggleButton.Font = Enum.Font.GothamBold
+toggleButton.TextScaled = true
+toggleButton.Size = UDim2.new(0, 50, 0, 50)
+toggleButton.Position = UDim2.new(0, 10, 0.5, -25)
+toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+toggleButton.BackgroundTransparency = 0.3
+toggleButton.BorderSizePixel = 2
+toggleButton.BorderColor3 = Color3.fromRGB(0, 255, 255)
+toggleButton.Active = true
+toggleButton.Draggable = true
+toggleButton.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0.5, 0)
+corner.Parent = toggleButton
+
+-- Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = getScaledSize(0.5, 0.6)
+mainFrame.Position = UDim2.new(0.5, -getScaledSize(0.5, 0.6).X.Offset/2, 0.5, -getScaledSize(0.5, 0.6).Y.Offset/2)
+mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+mainFrame.BackgroundTransparency = 0.1
+mainFrame.BorderSizePixel = 0
+mainFrame.Visible = false
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 15)
+mainCorner.Parent = mainFrame
+
+-- Header
+local header = Instance.new("Frame")
+header.Name = "Header"
+header.Size = UDim2.new(1, 0, 0, 50)
+header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+header.BorderSizePixel = 0
+header.Parent = mainFrame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 15)
+headerCorner.Parent = header
+
+local headerTitle = Instance.new("TextLabel")
+headerTitle.Name = "Title"
+headerTitle.Text = "SAN ANIMATIONS"
+headerTitle.Font = Enum.Font.GothamBold
+headerTitle.TextScaled = true
+headerTitle.TextColor3 = Color3.fromRGB(0, 255, 255)
+headerTitle.BackgroundTransparency = 1
+headerTitle.Size = UDim2.new(0.7, 0, 1, 0)
+headerTitle.Position = UDim2.new(0.05, 0, 0, 0)
+headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+headerTitle.Parent = header
+
+-- Close Button
+local closeButton = Instance.new("TextButton")
+closeButton.Name = "CloseButton"
+closeButton.Text = "❌"
+closeButton.Font = Enum.Font.GothamBold
+closeButton.TextScaled = true
+closeButton.TextColor3 = Color3.fromRGB(255, 100, 100)
+closeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
+closeButton.Size = UDim2.new(0, 40, 0, 40)
+closeButton.Position = UDim2.new(1, -45, 0, 5)
+closeButton.BorderSizePixel = 0
+closeButton.Parent = header
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0.5, 0)
+closeCorner.Parent = closeButton
+
+-- Search Bar
+local searchContainer = Instance.new("Frame")
+searchContainer.Name = "SearchContainer"
+searchContainer.Size = UDim2.new(0.9, 0, 0, 40)
+searchContainer.Position = UDim2.new(0.05, 0, 0, 60)
+searchContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+searchContainer.BorderSizePixel = 0
+searchContainer.Parent = mainFrame
+
+local searchCorner = Instance.new("UICorner")
+searchCorner.CornerRadius = UDim.new(0, 10)
+searchCorner.Parent = searchContainer
+
+local searchBar = Instance.new("TextBox")
+searchBar.Name = "SearchBar"
+searchBar.Text = ""
+searchBar.PlaceholderText = "🔍 Search animations..."
+searchBar.Font = Enum.Font.Gotham
+searchBar.TextSize = 16
+searchBar.TextColor3 = Color3.fromRGB(255, 255, 255)
+searchBar.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+searchBar.BackgroundTransparency = 1
+searchBar.Size = UDim2.new(1, -20, 1, 0)
+searchBar.Position = UDim2.new(0, 10, 0, 0)
+searchBar.ClearTextOnFocus = false
+searchBar.Parent = searchContainer
+
+-- Category Container
+local categoryContainer = Instance.new("Frame")
+categoryContainer.Name = "CategoryContainer"
+categoryContainer.Size = UDim2.new(0.9, 0, 0, 70)
+categoryContainer.Position = UDim2.new(0.05, 0, 0, 110)
+categoryContainer.BackgroundTransparency = 1
+categoryContainer.Parent = mainFrame
+
+local categoryLayout = Instance.new("UIGridLayout")
+categoryLayout.CellSize = UDim2.new(0, 60, 0, 60)
+categoryLayout.CellPadding = UDim2.new(0, 8, 0, 8)
+categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
+categoryLayout.Parent = categoryContainer
+
+-- Content Frame
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(0.9, 0, 1, -200)
+contentFrame.Position = UDim2.new(0.05, 0, 0, 190)
+contentFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+contentFrame.BorderSizePixel = 0
+contentFrame.Parent = mainFrame
+
+local contentCorner = Instance.new("UICorner")
+contentCorner.CornerRadius = UDim.new(0, 10)
+contentCorner.Parent = contentFrame
+
+-- Scroll Frame
+local scrollFrame = Instance.new("ScrollingFrame")
+scrollFrame.Name = "ScrollFrame"
+scrollFrame.Size = UDim2.new(1, -10, 1, -10)
+scrollFrame.Position = UDim2.new(0, 5, 0, 5)
+scrollFrame.BackgroundTransparency = 1
+scrollFrame.BorderSizePixel = 0
+scrollFrame.ScrollBarThickness = 6
+scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 255)
+scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
+scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+scrollFrame.Parent = contentFrame
+
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, 5)
+listLayout.Parent = scrollFrame
+
+-- ========================================
+-- TOGGLE FUNCTIONALITY
+-- ========================================
+local isOpen = false
+toggleButton.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    mainFrame.Visible = isOpen
+    
+    if isOpen then
+        toggleButton.Text = "📱"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+    else
+        toggleButton.Text = "📱"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    end
+end)
+
+closeButton.MouseButton1Click:Connect(function()
+    isOpen = false
+    mainFrame.Visible = false
+    toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+end)
+
+-- ========================================
+-- ANIMATION DATA
+-- ========================================
+local OriginalAnimations = {
+    Idle = {},
+    Walk = {},
+    Run = {},
+    Jump = {},
+    Fall = {},
+    Climb = {},
+    Swim = {},
+    SwimIdle = {},
+}
+
+local Animations = OriginalAnimations
+local lastAnimations = {}
+local currentCategory = "Idle"
+local allButtons = {}
+
+-- ========================================
+-- CATEGORY BUTTON CREATION
+-- ========================================
+local categoryButtons = {}
+
+local function createCategoryButton(category, icon)
+    local button = Instance.new("TextButton")
+    button.Name = category .. "Button"
+    button.Text = icon
+    button.Font = Enum.Font.GothamBold
+    button.TextScaled = true
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    button.BorderSizePixel = 0
+    button.Parent = categoryContainer
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = button
+    
+    local label = Instance.new("TextLabel")
+    label.Name = "Label"
+    label.Text = category
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 10
+    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.BackgroundTransparency = 1
+    label.Size = UDim2.new(1, 0, 0.25, 0)
+    label.Position = UDim2.new(0, 0, 0.75, 0)
+    label.Parent = button
+    
+    categoryButtons[category] = button
+    
+    button.MouseButton1Click:Connect(function()
+        currentCategory = category
+        for cat, btn in pairs(categoryButtons) do
+            if cat == category then
+                btn.BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+            end
+        end
+        refreshAnimationList()
+    end)
+    
+    return button
+end
+
+-- Create category buttons
+createCategoryButton("Idle", CategoryIcons.Idle)
+createCategoryButton("Walk", CategoryIcons.Walk)
+createCategoryButton("Run", CategoryIcons.Run)
+createCategoryButton("Jump", CategoryIcons.Jump)
+createCategoryButton("Fall", CategoryIcons.Fall)
+createCategoryButton("Climb", CategoryIcons.Climb)
+createCategoryButton("Swim", CategoryIcons.Swim)
+createCategoryButton("SwimIdle", CategoryIcons.SwimIdle)
+
+-- Set Idle as default selected
+categoryButtons["Idle"].BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+
+-- ========================================
+-- ANIMATION BUTTON CREATION
+-- ========================================
+function createAnimationButton(text, callback)
+    local button = Instance.new("TextButton")
+    button.Name = text
+    button.Text = text
+    button.Font = Enum.Font.Gotham
+    button.TextSize = 14
+    button.TextColor3 = Color3.fromRGB(255, 255, 255)
+    button.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    button.Size = UDim2.new(1, 0, 0, 45)
+    button.BorderSizePixel = 0
+    button.TextXAlignment = Enum.TextXAlignment.Left
+    button.Parent = scrollFrame
+    
+    local padding = Instance.new("UIPadding")
+    padding.PaddingLeft = UDim.new(0, 15)
+    padding.Parent = button
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = button
+    
+    button.MouseEnter:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 85)}):Play()
+    end)
+    
+    button.MouseLeave:Connect(function()
+        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 65)}):Play()
+    end)
+    
+    button.MouseButton1Click:Connect(callback)
+    
+    table.insert(allButtons, {button = button, text = text, category = currentCategory})
+    
+    return button
+end
+
+-- ========================================
+-- REFRESH ANIMATION LIST
+-- ========================================
+function refreshAnimationList()
+    for _, child in ipairs(scrollFrame:GetChildren()) do
+        if child:IsA("TextButton") then
+            child:Destroy()
+        end
+    end
+    
+    local searchText = searchBar.Text:lower()
+    local count = 0
+    
+    if Animations[currentCategory] then
+        for animName, _ in pairs(Animations[currentCategory]) do
+            if searchText == "" or animName:lower():find(searchText, 1, true) then
+                createAnimationButton(animName, function()
+                    setAnimation(currentCategory, animName)
+                    Notify("Set", currentCategory .. ": " .. animName, 2)
+                end)
+                count = count + 1
+            end
+        end
+    end
+    
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, count * 50)
+end
+
+-- Search functionality
+searchBar:GetPropertyChangedSignal("Text"):Connect(function()
+    refreshAnimationList()
+end)
+
+-- ========================================
+-- ANIMATION SYSTEM (Original Code)
+-- ========================================
+local function freeze()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = 0
+    humanoid.JumpPower = 0
+end
+
+local function unfreeze()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = 16
+    humanoid.JumpPower = 50
+end
+
+local function StopAnim()
+    local player = Players.LocalPlayer
+    local character = player.Character
+    if character then
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            for _, track in pairs(humanoid:GetPlayingAnimationTracks()) do
+                track:Stop()
+            end
+        end
+    end
+end
+
+function setAnimation(animType, animName)
+    freeze()
+    
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:Wait()
+    local humanoid = character:WaitForChild("Humanoid")
+    local animate = character:WaitForChild("Animate")
+    
+    if not Animations[animType] or not Animations[animType][animName] then
+        Notify("Error", "Animation not found!", 3)
+        unfreeze()
+        return
+    end
+    
+    local animData = Animations[animType][animName]
+    local animFolder = animate:FindFirstChild(animType:lower())
+    
+    if not animFolder then
+        Notify("Error", animType .. " folder not found!", 3)
+        unfreeze()
+        return
+    end
+    
+    for _, child in ipairs(animFolder:GetChildren()) do
+        if child:IsA("Animation") then
+            child:Destroy()
+        end
+    end
+    
+    if type(animData) == "table" then
+        for i, id in ipairs(animData) do
+            local anim = Instance.new("Animation")
+            anim.Name = animType .. tostring(i)
+            anim.AnimationId = "rbxassetid://" .. tostring(id)
+            anim.Parent = animFolder
+        end
+    else
+        local anim = Instance.new("Animation")
+        anim.Name = animType .. "Anim"
+        anim.AnimationId = "rbxassetid://" .. tostring(animData)
+        anim.Parent = animFolder
+    end
+    
+    lastAnimations[animType] = animName
+    
+    local saveData = {}
+    for k, v in pairs(lastAnimations) do
+        saveData[k] = v
+    end
+    
+    local success, err = pcall(function()
+        writefile("MeWhenUrMom.json", HttpService:JSONEncode(saveData))
+    end)
+    
+    if not success then
+        warn("Failed to save:", err)
+    end
+    
+    StopAnim()
+    humanoid:ChangeState(Enum.HumanoidStateType.Landed)
+    
+    wait(0.1)
+    unfreeze()
+end
+
+local function loadLastAnimations()
+    if isfile("MeWhenUrMom.json") then
+        local data = readfile("MeWhenUrMom.json")
+        local lastAnimationsData = HttpService:JSONDecode(data)
+        Notify("Loaded", "Saved animations loaded!", 3)
+        if lastAnimationsData.Idle then setAnimation("Idle", lastAnimationsData.Idle) end
+        if lastAnimationsData.Walk then setAnimation("Walk", lastAnimationsData.Walk) end
+        if lastAnimationsData.Run then setAnimation("Run", lastAnimationsData.Run) end
+        if lastAnimationsData.Jump then setAnimation("Jump", lastAnimationsData.Jump) end
+        if lastAnimationsData.Fall then setAnimation("Fall", lastAnimationsData.Fall) end
+        if lastAnimationsData.Climb then setAnimation("Climb", lastAnimationsData.Climb) end
+        if lastAnimationsData.Swim then setAnimation("Swim", lastAnimationsData.Swim) end
+        if lastAnimationsData.SwimIdle then setAnimation("SwimIdle", lastAnimationsData.SwimIdle) end
+    else
+        Notify("First Time", "No saved animations found", 3)
+    end
+end
+
+local function PlayEmote(animationId)
+    StopAnim()
+    local player = Players.LocalPlayer
+    local character = player.Character or player.CharacterAdded:wait(0.1)
+    local humanoid = character:WaitForChild("Humanoid")
+    local animation = Instance.new("Animation")
+    animation.AnimationId = "rbxassetid://" .. animationId
+    local animationTrack = humanoid:LoadAnimation(animation)
+    animationTrack:Play()
+    local function onMoved()
+        local moveDirection = humanoid.MoveDirection
+        if moveDirection.Magnitude > 0 then
+            animationTrack:Stop()
+        end
+    end
+    local checkMovement
+    checkMovement = game:GetService("RunService").RenderStepped:Connect(onMoved)
+end
+
+local function Buy(gamePassID)
+    local MarketplaceService = game:GetService("MarketplaceService")
+    local success, _ = pcall(function()
+        MarketplaceService:PromptGamePassPurchase(game:GetService("Players").LocalPlayer, gamePassID)
+    end)
+    if not success then
+        setclipboard("https://www.roblox.com/game-pass/" .. gamePassID)
+        Notify("Copied", "Gamepass link copied!", 3)
+    end
+end
+
+-- ========================================
+-- LOAD ANIMATIONS FROM FILE
+-- ========================================
+local fileAnimations = {}
+
+if isfile("GreyLikesToSmellUrFeet.json") then
+    local data = readfile("GreyLikesToSmellUrFeet.json")
+    fileAnimations = HttpService:JSONDecode(data)
+    Animations = HttpService:JSONDecode(data)
+    Notify("Loaded", "Animations from file", 2)
+else
+    writefile("GreyLikesToSmellUrFeet.json", HttpService:JSONEncode(OriginalAnimations))
+    fileAnimations = HttpService:JSONDecode(HttpService:JSONEncode(OriginalAnimations))
+    Animations = OriginalAnimations
+    Notify("Created", "New animation file", 2)
+end
+
+-- ========================================
+-- UPDATE FROM ONLINE DATABASE
+-- ========================================
+local function LoadAndUpdateAnimations()
+    local onlineAnimations = {}
+    
+    local function fetchOnlineAnimations()
+        local success, result = pcall(function()
+            return game:HttpGet("https://raw.githubusercontent.com/Sanzzy111/SanKur/refs/heads/main/database%20animasi")
+        end)
+        
+        if success and result then
+            local func, err = loadstring(result)
+            if func then
+                local ok, data = pcall(func)
+                if ok and type(data) == "table" then
+                    return data
+                end
+            end
+        end
+        return nil
+    end
+    
+    onlineAnimations = fetchOnlineAnimations()
+    
+    if not onlineAnimations then
+        Notify("Database", "Failed to load online database", 3)
+        return
+    end
+    
+    local newAnimationsFound = 0
+    local updatedAnimations = 0
+    local hadChanges = false
+    
+    local function compareAnimData(a, b)
+        if type(a) ~= type(b) then
+            return false
+        end
+        if type(a) == "table" then
+            if #a ~= #b then return false end
+            for i = 1, #a do
+                if tostring(a[i]) ~= tostring(b[i]) then
+                    return false
+                end
+            end
+            return true
+        else
+            return tostring(a) == tostring(b)
+        end
+    end
+    
+    for animType, typeAnims in pairs(onlineAnimations) do
+        local fileTypeAnims = fileAnimations[animType] or {}
+        
+        for animName, animData in pairs(typeAnims) do
+            local fileData = fileTypeAnims[animName]
+            
+            if not fileData then
+                newAnimationsFound = newAnimationsFound + 1
+                hadChanges = true
+                Animations[animType] = Animations[animType] or {}
+                Animations[animType][animName] = animData
+                fileAnimations[animType] = fileAnimations[animType] or {}
+                fileAnimations[animType][animName] = animData
+            elseif not compareAnimData(animData, fileData) then
+                updatedAnimations = updatedAnimations + 1
+                hadChanges = true
+                Animations[animType][animName] = animData
+                fileAnimations[animType][animName] = animData
+            end
+        end
+    end
+    
+    if hadChanges then
+        writefile("GreyLikesToSmellUrFeet.json", HttpService:JSONEncode(Animations))
+        local newFileData = readfile("GreyLikesToSmellUrFeet.json")
+        fileAnimations = HttpService:JSONDecode(newFileData)
+        
+        refreshAnimationList()
+        
+        Notify("Database Update", 
+            string.format("New: %d | Updated: %d", newAnimationsFound, updatedAnimations), 
+            5)
+    else
+        Notify("Database", "All animations up to date!", 3)
+    end
+end
+
+-- ========================================
+-- CHARACTER RESPAWN HANDLER
+-- ========================================
+Players.LocalPlayer.CharacterAdded:Connect(function(character)
+    local hum = character:WaitForChild("Humanoid")
+    local animate = character:WaitForChild("Animate", 10)
+    if not animate then
+        Notify("Error", "Animate script not found!", 5)
+        return
+    end
+    
+    if lastAnimations.Idle then setAnimation("Idle", lastAnimations.Idle) end
+    if lastAnimations.Walk then setAnimation("Walk", lastAnimations.Walk) end
+    if lastAnimations.Run then setAnimation("Run", lastAnimations.Run) end
+    if lastAnimations.Jump then setAnimation("Jump", lastAnimations.Jump) end
+    if lastAnimations.Fall then setAnimation("Fall", lastAnimations.Fall) end
+    if lastAnimations.Climb then setAnimation("Climb", lastAnimations.Climb) end
+    if lastAnimations.Swim then setAnimation("Swim", lastAnimations.Swim) end
+    if lastAnimations.SwimIdle then setAnimation("SwimIdle", lastAnimations.SwimIdle) end
+end)
+
+-- ========================================
+-- INITIALIZE
+-- ========================================
+LoadAndUpdateAnimations()
+loadLastAnimations()
+refreshAnimationList()
+
+local lt = os.clock() - st
+Notify("Loaded", string.format("Ready in %.2f seconds", lt), 3)
+Notify("Welcome", "Click the icon to open UI! 📱", 5)
+
+end)
