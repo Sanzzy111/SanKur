@@ -11,6 +11,7 @@ local st = os.clock()
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local camera = workspace.CurrentCamera
 
 cloneref = cloneref or function(o) return o end
@@ -33,69 +34,187 @@ verificatorGui.Name = guiName
 verificatorGui.Parent = SanGoGui
 
 -- ========================================
--- NOTIFICATION SYSTEM
+-- THEME COLORS (Soft Purple)
+-- ========================================
+local Theme = {
+    Primary       = Color3.fromRGB(130, 90, 200),    -- soft purple
+    PrimaryLight  = Color3.fromRGB(160, 120, 230),   -- lighter purple
+    PrimaryDark   = Color3.fromRGB(90, 55, 150),     -- darker purple
+    Accent        = Color3.fromRGB(200, 160, 255),   -- lavender accent
+    BgDark        = Color3.fromRGB(22, 18, 35),      -- dark bg
+    BgMid         = Color3.fromRGB(32, 26, 50),      -- mid bg
+    BgLight       = Color3.fromRGB(45, 36, 68),      -- light bg
+    BgCard        = Color3.fromRGB(52, 42, 78),      -- card bg
+    Text          = Color3.fromRGB(240, 235, 255),   -- main text
+    TextMuted     = Color3.fromRGB(170, 155, 200),   -- muted text
+    Success       = Color3.fromRGB(100, 220, 160),   -- green
+    Warning       = Color3.fromRGB(255, 200, 80),    -- yellow
+    Error         = Color3.fromRGB(255, 100, 120),   -- red
+    Info          = Color3.fromRGB(130, 190, 255),   -- blue
+}
+
+-- ========================================
+-- NOTIFICATION SYSTEM (Upgraded)
 -- ========================================
 local Notifbro = {}
+
+-- Notification type icons (rbxassetid)
+local NotifIcons = {
+    Default  = "rbxassetid://134341920489415",
+    Loaded   = "rbxassetid://134341920489415",
+    Error    = "rbxassetid://16913919379",
+    Warning  = "rbxassetid://16913919379",
+    Set      = "rbxassetid://5578470911",
+    Created  = "rbxassetid://5578470911",
+    Copied   = "rbxassetid://5578470911",
+    Database = "rbxassetid://5578470911",
+    Welcome  = "rbxassetid://134341920489415",
+    ["First Time"] = "rbxassetid://134341920489415",
+    ["Database Update"] = "rbxassetid://134341920489415",
+}
+
+local NotifColors = {
+    Default  = Theme.Primary,
+    Loaded   = Theme.Success,
+    Error    = Theme.Error,
+    Warning  = Theme.Warning,
+    Set      = Theme.PrimaryLight,
+    Created  = Theme.Success,
+    Copied   = Theme.Info,
+    Database = Theme.Info,
+    Welcome  = Theme.Accent,
+    ["First Time"] = Theme.Warning,
+    ["Database Update"] = Theme.Success,
+}
+
 function Notify(titletxt, text, time)
     coroutine.wrap(function()
         local GUI = Instance.new("ScreenGui")
-        local Main = Instance.new("Frame", GUI)
-        local title = Instance.new("TextLabel", Main)
-        local message = Instance.new("TextLabel", Main)
-
-        GUI.Name = "BackgroundNotif"
+        GUI.Name = "SanNotif"
         GUI.Parent = SanGoGui
 
         local sw = workspace.CurrentCamera.ViewportSize.X
         local sh = workspace.CurrentCamera.ViewportSize.Y
-        local nh = sh / 7
-        local nw = sw / 5
+        local nw = math.max(260, sw / 5.5)
+        local nh = 70
 
+        local accentColor = NotifColors[titletxt] or Theme.Primary
+        local iconId = NotifIcons[titletxt] or NotifIcons.Default
+
+        -- Outer shadow frame
+        local shadow = Instance.new("Frame", GUI)
+        shadow.Size = UDim2.new(0, nw + 8, 0, nh + 8)
+        shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        shadow.BackgroundTransparency = 0.6
+        shadow.BorderSizePixel = 0
+        local shadowCorner = Instance.new("UICorner", shadow)
+        shadowCorner.CornerRadius = UDim.new(0, 16)
+
+        -- Main card
+        local Main = Instance.new("Frame", GUI)
         Main.Name = "MainFrame"
-        Main.BackgroundColor3 = Color3.new(0.156863, 0.156863, 0.156863)
-        Main.BackgroundTransparency = 0.2
+        Main.BackgroundColor3 = Theme.BgMid
+        Main.BackgroundTransparency = 0.05
         Main.BorderSizePixel = 0
         Main.Size = UDim2.new(0, nw, 0, nh)
+        local mainCornerN = Instance.new("UICorner", Main)
+        mainCornerN.CornerRadius = UDim.new(0, 14)
 
-        title.BackgroundColor3 = Color3.new(0, 0, 0)
-        title.BackgroundTransparency = 0.9
-        title.Size = UDim2.new(1, 0, 0, nh / 2)
+        -- Accent left bar
+        local accentBar = Instance.new("Frame", Main)
+        accentBar.Size = UDim2.new(0, 4, 1, 0)
+        accentBar.BackgroundColor3 = accentColor
+        accentBar.BorderSizePixel = 0
+        local accentCorner = Instance.new("UICorner", accentBar)
+        accentCorner.CornerRadius = UDim.new(0, 4)
+
+        -- Icon image
+        local iconFrame = Instance.new("Frame", Main)
+        iconFrame.Size = UDim2.new(0, 38, 0, 38)
+        iconFrame.Position = UDim2.new(0, 16, 0.5, -19)
+        iconFrame.BackgroundColor3 = accentColor
+        iconFrame.BackgroundTransparency = 0.75
+        iconFrame.BorderSizePixel = 0
+        local iconFrameCorner = Instance.new("UICorner", iconFrame)
+        iconFrameCorner.CornerRadius = UDim.new(0, 10)
+
+        local icon = Instance.new("ImageLabel", iconFrame)
+        icon.Size = UDim2.new(0, 22, 0, 22)
+        icon.Position = UDim2.new(0.5, -11, 0.5, -11)
+        icon.BackgroundTransparency = 1
+        icon.Image = iconId
+        icon.ImageColor3 = accentColor
+
+        -- Title label
+        local title = Instance.new("TextLabel", Main)
+        title.BackgroundTransparency = 1
+        title.Size = UDim2.new(1, -80, 0, 22)
+        title.Position = UDim2.new(0, 66, 0, 10)
         title.Font = Enum.Font.GothamBold
+        title.TextSize = 13
         title.Text = titletxt
-        title.TextColor3 = Color3.new(1, 1, 1)
-        title.TextScaled = true
+        title.TextColor3 = accentColor
+        title.TextXAlignment = Enum.TextXAlignment.Left
 
-        message.BackgroundColor3 = Color3.new(0, 0, 0)
+        -- Message label
+        local message = Instance.new("TextLabel", Main)
         message.BackgroundTransparency = 1
-        message.Position = UDim2.new(0, 0, 0, nh / 2)
-        message.Size = UDim2.new(1, 0, 1, -nh / 2)
+        message.Size = UDim2.new(1, -80, 0, 24)
+        message.Position = UDim2.new(0, 66, 0, 33)
         message.Font = Enum.Font.Gotham
+        message.TextSize = 11
         message.Text = text
-        message.TextColor3 = Color3.new(1, 1, 1)
-        message.TextScaled = true
+        message.TextColor3 = Theme.TextMuted
+        message.TextXAlignment = Enum.TextXAlignment.Left
+        message.TextWrapped = true
 
-        local offset = 50
+        -- Progress bar bg
+        local progressBg = Instance.new("Frame", Main)
+        progressBg.Size = UDim2.new(1, -8, 0, 3)
+        progressBg.Position = UDim2.new(0, 4, 1, -5)
+        progressBg.BackgroundColor3 = Theme.BgLight
+        progressBg.BorderSizePixel = 0
+        local progBgCorner = Instance.new("UICorner", progressBg)
+        progBgCorner.CornerRadius = UDim.new(1, 0)
+
+        local progressBar = Instance.new("Frame", progressBg)
+        progressBar.Size = UDim2.new(1, 0, 1, 0)
+        progressBar.BackgroundColor3 = accentColor
+        progressBar.BorderSizePixel = 0
+        local progCorner = Instance.new("UICorner", progressBar)
+        progCorner.CornerRadius = UDim.new(1, 0)
+
+        -- Stacking offset
+        local offset = 20
         for _, notif in ipairs(Notifbro) do
-            offset = offset + notif.Size.Y.Offset + 10
+            offset = offset + notif.Size.Y.Offset + 12
         end
 
-        Main.Position = UDim2.new(1, 5, 0, offset)
+        local startX = UDim2.new(1, nw + 10, 0, offset)
+        local endX   = UDim2.new(1, -nw - 16, 0, offset)
+
+        Main.Position = startX
+        shadow.Position = UDim2.new(startX.X.Scale, startX.X.Offset - 4, startX.Y.Scale, startX.Y.Offset - 4)
         table.insert(Notifbro, Main)
 
-        task.wait(0.1)
-        Main:TweenPosition(UDim2.new(1, -nw, 0, offset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
-        Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.5, true)
-        task.wait(0.1)
-        Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.Out, Enum.EasingStyle.Elastic, 0.2, true)
+        -- Slide in
+        task.wait(0.05)
+        local tweenIn = TweenService:Create(Main, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = endX})
+        local tweenShadowIn = TweenService:Create(shadow, TweenInfo.new(0.45, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(endX.X.Scale, endX.X.Offset - 4, endX.Y.Scale, endX.Y.Offset - 4)})
+        tweenIn:Play()
+        tweenShadowIn:Play()
+
+        -- Progress drain
+        TweenService:Create(progressBar, TweenInfo.new(time, Enum.EasingStyle.Linear), {Size = UDim2.new(0, 0, 1, 0)}):Play()
 
         task.wait(time)
 
-        Main:TweenSize(UDim2.new(0, nw * 1.06, 0, nh * 1.06), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
-        task.wait(0.2)
-        Main:TweenSize(UDim2.new(0, nw, 0, nh), Enum.EasingDirection.In, Enum.EasingStyle.Elastic, 0.2, true)
-        task.wait(0.2)
-        Main:TweenPosition(UDim2.new(1, 5, 0, offset), Enum.EasingDirection.In, Enum.EasingStyle.Bounce, 0.5, true)
-        task.wait(0.1)
+        -- Slide out
+        local tweenOut = TweenService:Create(Main, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Position = startX, BackgroundTransparency = 0.7})
+        local tweenShadowOut = TweenService:Create(shadow, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {Position = UDim2.new(startX.X.Scale, startX.X.Offset - 4, startX.Y.Scale, startX.Y.Offset - 4), BackgroundTransparency = 1})
+        tweenOut:Play()
+        tweenShadowOut:Play()
+        task.wait(0.38)
 
         GUI:Destroy()
         for i, notif in ipairs(Notifbro) do
@@ -106,8 +225,8 @@ function Notify(titletxt, text, time)
         end
 
         for i, notif in ipairs(Notifbro) do
-            local newOffset = 50 + (nh + 10) * (i - 1)
-            notif:TweenPosition(UDim2.new(1, -nw, 0, newOffset), Enum.EasingDirection.Out, Enum.EasingStyle.Bounce, 0.5, true)
+            local newOffset = 20 + (nh + 12) * (i - 1)
+            TweenService:Create(notif, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Position = UDim2.new(1, -nw - 16, 0, newOffset)}):Play()
         end
     end)()
 end
@@ -115,19 +234,19 @@ end
 task.wait(0.1)
 
 -- ========================================
--- ICON DEFINITIONS
+-- ICON DEFINITIONS (rbxassetid)
 -- ========================================
 local CategoryIcons = {
-    Idle = "🧍",
-    Walk = "🚶",
-    Run = "🏃",
-    Jump = "🦘",
-    Fall = "🪂",
-    Climb = "🧗",
-    Swim = "🏊",
-    SwimIdle = "🌊",
-    Emote = "😄",
-    Donate = "💰"
+    Idle     = "rbxassetid://129775391836345",   -- standing figure
+    Walk     = "rbxassetid://100773799716592",   -- walk
+    Run      = "rbxassetid://134314542459823",   -- run
+    Jump     = "rbxassetid://81557655286768",   -- jump
+    Fall     = "rbxassetid://106215247611433",   -- fall
+    Climb    = "rbxassetid://74367187017671",   -- climb
+    Swim     = "rbxassetid://118863319136660",   -- swim
+    SwimIdle = "rbxassetid://84289638742203",   -- swim idle
+    Emote    = "rbxassetid://7733960981",   -- emote
+    Donate   = "rbxassetid://7733720784",   -- donate
 }
 
 -- ========================================
@@ -136,6 +255,16 @@ local CategoryIcons = {
 local function getScaledSize(relativeWidth, relativeHeight)
     local viewportSize = camera.ViewportSize
     return UDim2.new(0, math.floor(viewportSize.X * relativeWidth), 0, math.floor(viewportSize.Y * relativeHeight))
+end
+
+local function addGlow(parent, color, transparency)
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Theme.Primary
+    stroke.Thickness = 1.5
+    stroke.Transparency = transparency or 0.4
+    stroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    stroke.Parent = parent
+    return stroke
 end
 
 -- ========================================
@@ -149,75 +278,174 @@ local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "DraggableGui"
 screenGui.Parent = core
 
--- Toggle Button (Icon Mode)
-local toggleButton = Instance.new("TextButton")
+-- ========================================
+-- DETECT INPUT TYPE (Touch/Mobile vs KB+Mouse)
+-- ========================================
+local isTouchDevice = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not UserInputService.MouseEnabled
+
+-- ========================================
+-- TOGGLE BUTTON (Only visible on touch/mobile)
+-- ========================================
+local toggleButton = Instance.new("ImageButton")
 toggleButton.Name = "ToggleButton"
-toggleButton.Text = "📱"
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.TextScaled = true
-toggleButton.Size = UDim2.new(0, 50, 0, 50)
-toggleButton.Position = UDim2.new(0, 10, 0.5, -25)
-toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-toggleButton.BackgroundTransparency = 0.3
-toggleButton.BorderSizePixel = 2
-toggleButton.BorderColor3 = Color3.fromRGB(0, 255, 255)
+toggleButton.Image = "rbxassetid://8215093320"
+toggleButton.ImageColor3 = Theme.Accent
+toggleButton.Size = UDim2.new(0, 52, 0, 52)
+toggleButton.Position = UDim2.new(0, 10, 0.5, -26)
+toggleButton.BackgroundColor3 = Theme.BgMid
+toggleButton.BackgroundTransparency = 0.1
+toggleButton.BorderSizePixel = 0
 toggleButton.Active = true
 toggleButton.Draggable = true
+toggleButton.Visible = isTouchDevice  -- Only show on touch/mobile
 toggleButton.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0.5, 0)
-corner.Parent = toggleButton
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0.5, 0)
+toggleCorner.Parent = toggleButton
 
--- Main Frame
+if isTouchDevice then
+    addGlow(toggleButton, Theme.Primary, 0.3)
+    -- Pulse animation for toggle (mobile only)
+    TweenService:Create(toggleButton, TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
+        ImageColor3 = Theme.Primary
+    }):Play()
+end
+
+-- Re-check on input type change (e.g. plugging in mouse)
+UserInputService.LastInputTypeChanged:Connect(function(inputType)
+    local isTouch = (inputType == Enum.UserInputType.Touch)
+    local isMouse = (inputType == Enum.UserInputType.MouseMovement or inputType == Enum.UserInputType.MouseButton1)
+    local isKB    = (inputType == Enum.UserInputType.Keyboard)
+    if isTouch then
+        toggleButton.Visible = true
+    elseif isMouse or isKB then
+        toggleButton.Visible = false
+        -- Also hide if main frame open via toggle, keep it open but hide button
+    end
+end)
+
+-- ========================================
+-- MAIN FRAME (fully responsive, scale-based)
+-- ========================================
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = getScaledSize(0.5, 0.6)
-mainFrame.Position = UDim2.new(0.5, -getScaledSize(0.5, 0.6).X.Offset/2, 0.5, -getScaledSize(0.5, 0.6).Y.Offset/2)
-mainFrame.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
-mainFrame.BackgroundTransparency = 0.1
+mainFrame.Size = UDim2.new(0.5, 0, 0.62, 0)
+mainFrame.Position = UDim2.new(0.25, 0, 0.19, 0)
+mainFrame.BackgroundColor3 = Theme.BgDark
+mainFrame.BackgroundTransparency = 0.05
 mainFrame.BorderSizePixel = 0
 mainFrame.Visible = false
 mainFrame.Parent = screenGui
 
 local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 15)
+mainCorner.CornerRadius = UDim.new(0, 18)
 mainCorner.Parent = mainFrame
 
--- Header
+addGlow(mainFrame, Theme.Primary, 0.5)
+
+-- Subtle gradient overlay on main frame
+local mainGradient = Instance.new("UIGradient")
+mainGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.BgMid),
+    ColorSequenceKeypoint.new(1, Theme.BgDark)
+})
+mainGradient.Rotation = 135
+mainGradient.Parent = mainFrame
+
+-- ========================================
+-- HEADER (scale-based height)
+-- ========================================
 local header = Instance.new("Frame")
 header.Name = "Header"
-header.Size = UDim2.new(1, 0, 0, 50)
-header.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+header.Size = UDim2.new(1, 0, 0, 56)
+header.BackgroundColor3 = Theme.BgDark
 header.BorderSizePixel = 0
 header.Parent = mainFrame
 
 local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 15)
+headerCorner.CornerRadius = UDim.new(0, 18)
 headerCorner.Parent = header
 
+-- Header gradient
+local headerGradient = Instance.new("UIGradient")
+headerGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Theme.PrimaryDark),
+    ColorSequenceKeypoint.new(0.5, Theme.BgDark),
+    ColorSequenceKeypoint.new(1, Theme.BgDark)
+})
+headerGradient.Rotation = 90
+headerGradient.Transparency = NumberSequence.new({
+    NumberSequenceKeypoint.new(0, 0),
+    NumberSequenceKeypoint.new(1, 0)
+})
+headerGradient.Parent = header
+
+-- App icon in header
+local appIcon = Instance.new("ImageLabel")
+appIcon.Name = "AppIcon"
+appIcon.Image = "rbxassetid://12557404943"
+appIcon.ImageColor3 = Theme.Accent
+appIcon.Size = UDim2.new(0, 30, 0, 30)
+appIcon.Position = UDim2.new(0, 14, 0.5, -15)
+appIcon.BackgroundTransparency = 1
+appIcon.Parent = header
+
+-- Header title (TextScaled so it fits any width)
 local headerTitle = Instance.new("TextLabel")
 headerTitle.Name = "Title"
 headerTitle.Text = "SAN ANIMATIONS"
 headerTitle.Font = Enum.Font.GothamBold
 headerTitle.TextScaled = true
-headerTitle.TextColor3 = Color3.fromRGB(0, 255, 255)
+headerTitle.TextColor3 = Theme.Text
 headerTitle.BackgroundTransparency = 1
-headerTitle.Size = UDim2.new(0.7, 0, 1, 0)
-headerTitle.Position = UDim2.new(0.05, 0, 0, 0)
+headerTitle.Size = UDim2.new(1, -120, 0, 22)
+headerTitle.Position = UDim2.new(0, 52, 0.5, -18)
 headerTitle.TextXAlignment = Enum.TextXAlignment.Left
 headerTitle.Parent = header
 
--- Close Button
-local closeButton = Instance.new("TextButton")
+local titleConstraint = Instance.new("UITextSizeConstraint")
+titleConstraint.MinTextSize = 10
+titleConstraint.MaxTextSize = 18
+titleConstraint.Parent = headerTitle
+
+-- Subtitle
+local headerSub = Instance.new("TextLabel")
+headerSub.Name = "Subtitle"
+headerSub.Text = "Animation Manager"
+headerSub.Font = Enum.Font.Gotham
+headerSub.TextScaled = true
+headerSub.TextColor3 = Theme.TextMuted
+headerSub.BackgroundTransparency = 1
+headerSub.Size = UDim2.new(1, -120, 0, 13)
+headerSub.Position = UDim2.new(0, 52, 0.5, 5)
+headerSub.TextXAlignment = Enum.TextXAlignment.Left
+headerSub.Parent = header
+
+local subConstraint = Instance.new("UITextSizeConstraint")
+subConstraint.MinTextSize = 8
+subConstraint.MaxTextSize = 12
+subConstraint.Parent = headerSub
+
+-- Bottom border line on header
+local headerLine = Instance.new("Frame")
+headerLine.Size = UDim2.new(0.9, 0, 0, 1)
+headerLine.Position = UDim2.new(0.05, 0, 1, -1)
+headerLine.BackgroundColor3 = Theme.PrimaryDark
+headerLine.BackgroundTransparency = 0.4
+headerLine.BorderSizePixel = 0
+headerLine.Parent = header
+
+-- ========================================
+-- CLOSE BUTTON
+-- ========================================
+local closeButton = Instance.new("ImageButton")
 closeButton.Name = "CloseButton"
-closeButton.Text = "❌"
-closeButton.Font = Enum.Font.GothamBold
-closeButton.TextScaled = true
-closeButton.TextColor3 = Color3.fromRGB(255, 100, 100)
-closeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 55)
-closeButton.Size = UDim2.new(0, 40, 0, 40)
-closeButton.Position = UDim2.new(1, -45, 0, 5)
+closeButton.Image = "rbxassetid://91182229617087"
+closeButton.ImageColor3 = Theme.Error
+closeButton.BackgroundColor3 = Color3.fromRGB(60, 28, 38)
+closeButton.Size = UDim2.new(0, 36, 0, 36)
+closeButton.Position = UDim2.new(1, -46, 0.5, -18)
 closeButton.BorderSizePixel = 0
 closeButton.Parent = header
 
@@ -225,12 +453,21 @@ local closeCorner = Instance.new("UICorner")
 closeCorner.CornerRadius = UDim.new(0.5, 0)
 closeCorner.Parent = closeButton
 
--- Search Bar
+closeButton.MouseEnter:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(180, 40, 60)}):Play()
+end)
+closeButton.MouseLeave:Connect(function()
+    TweenService:Create(closeButton, TweenInfo.new(0.18), {BackgroundColor3 = Color3.fromRGB(60, 28, 38)}):Play()
+end)
+
+-- ========================================
+-- SEARCH BAR (relative height)
+-- ========================================
 local searchContainer = Instance.new("Frame")
 searchContainer.Name = "SearchContainer"
-searchContainer.Size = UDim2.new(0.9, 0, 0, 40)
-searchContainer.Position = UDim2.new(0.05, 0, 0, 60)
-searchContainer.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+searchContainer.Size = UDim2.new(0.9, 0, 0, 36)
+searchContainer.Position = UDim2.new(0.05, 0, 0, 62)
+searchContainer.BackgroundColor3 = Theme.BgCard
 searchContainer.BorderSizePixel = 0
 searchContainer.Parent = mainFrame
 
@@ -238,46 +475,95 @@ local searchCorner = Instance.new("UICorner")
 searchCorner.CornerRadius = UDim.new(0, 10)
 searchCorner.Parent = searchContainer
 
+addGlow(searchContainer, Theme.PrimaryDark, 0.5)
+
+-- Search icon
+local searchIcon = Instance.new("ImageLabel")
+searchIcon.Image = "rbxassetid://98908450631624"
+searchIcon.ImageColor3 = Theme.TextMuted
+searchIcon.Size = UDim2.new(0, 18, 0, 18)
+searchIcon.Position = UDim2.new(0, 10, 0.5, -9)
+searchIcon.BackgroundTransparency = 1
+searchIcon.Parent = searchContainer
+
 local searchBar = Instance.new("TextBox")
 searchBar.Name = "SearchBar"
 searchBar.Text = ""
-searchBar.PlaceholderText = "🔍 Search animations..."
+searchBar.PlaceholderText = "Search animations..."
 searchBar.Font = Enum.Font.Gotham
-searchBar.TextSize = 16
-searchBar.TextColor3 = Color3.fromRGB(255, 255, 255)
-searchBar.PlaceholderColor3 = Color3.fromRGB(150, 150, 150)
+searchBar.TextScaled = true
+searchBar.TextColor3 = Theme.Text
+searchBar.PlaceholderColor3 = Theme.TextMuted
 searchBar.BackgroundTransparency = 1
-searchBar.Size = UDim2.new(1, -20, 1, 0)
-searchBar.Position = UDim2.new(0, 10, 0, 0)
+searchBar.Size = UDim2.new(1, -42, 1, 0)
+searchBar.Position = UDim2.new(0, 36, 0, 0)
 searchBar.ClearTextOnFocus = false
 searchBar.Parent = searchContainer
 
--- Category Container
-local categoryContainer = Instance.new("Frame")
-categoryContainer.Name = "CategoryContainer"
-categoryContainer.Size = UDim2.new(0.9, 0, 0, 70)
-categoryContainer.Position = UDim2.new(0.05, 0, 0, 110)
-categoryContainer.BackgroundTransparency = 1
-categoryContainer.Parent = mainFrame
+local searchTextConstraint = Instance.new("UITextSizeConstraint")
+searchTextConstraint.MinTextSize = 10
+searchTextConstraint.MaxTextSize = 14
+searchTextConstraint.Parent = searchBar
 
-local categoryLayout = Instance.new("UIGridLayout")
-categoryLayout.CellSize = UDim2.new(0, 60, 0, 60)
-categoryLayout.CellPadding = UDim2.new(0, 8, 0, 8)
+-- Focus glow on search
+searchBar.Focused:Connect(function()
+    TweenService:Create(searchContainer, TweenInfo.new(0.2), {BackgroundColor3 = Theme.BgLight}):Play()
+end)
+searchBar.FocusLost:Connect(function()
+    TweenService:Create(searchContainer, TweenInfo.new(0.2), {BackgroundColor3 = Theme.BgCard}):Play()
+end)
+
+-- ========================================
+-- CATEGORY CONTAINER (horizontal ScrollingFrame - no overflow)
+-- ========================================
+local categoryWrapper = Instance.new("Frame")
+categoryWrapper.Name = "CategoryWrapper"
+categoryWrapper.Size = UDim2.new(0.9, 0, 0, 70)
+categoryWrapper.Position = UDim2.new(0.05, 0, 0, 106)
+categoryWrapper.BackgroundTransparency = 1
+categoryWrapper.ClipsDescendants = true
+categoryWrapper.Parent = mainFrame
+
+local categoryContainer = Instance.new("ScrollingFrame")
+categoryContainer.Name = "CategoryContainer"
+categoryContainer.Size = UDim2.new(1, 0, 1, 0)
+categoryContainer.Position = UDim2.new(0, 0, 0, 0)
+categoryContainer.BackgroundTransparency = 1
+categoryContainer.BorderSizePixel = 0
+categoryContainer.ScrollBarThickness = 0  -- invisible scrollbar, swipe-able
+categoryContainer.ScrollingDirection = Enum.ScrollingDirection.X
+categoryContainer.CanvasSize = UDim2.new(0, 0, 0, 0)  -- auto-set below
+categoryContainer.AutomaticCanvasSize = Enum.AutomaticSize.X
+categoryContainer.Parent = categoryWrapper
+
+local categoryLayout = Instance.new("UIListLayout")
+categoryLayout.FillDirection = Enum.FillDirection.Horizontal
 categoryLayout.SortOrder = Enum.SortOrder.LayoutOrder
+categoryLayout.Padding = UDim.new(0, 7)
+categoryLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 categoryLayout.Parent = categoryContainer
 
--- Content Frame
+local categoryPadding = Instance.new("UIPadding")
+categoryPadding.PaddingLeft = UDim.new(0, 2)
+categoryPadding.PaddingRight = UDim.new(0, 2)
+categoryPadding.Parent = categoryContainer
+
+-- ========================================
+-- CONTENT FRAME (fills remaining space below categories)
+-- ========================================
 local contentFrame = Instance.new("Frame")
 contentFrame.Name = "ContentFrame"
-contentFrame.Size = UDim2.new(0.9, 0, 1, -200)
-contentFrame.Position = UDim2.new(0.05, 0, 0, 190)
-contentFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+contentFrame.Size = UDim2.new(0.9, 0, 1, -190)
+contentFrame.Position = UDim2.new(0.05, 0, 0, 185)
+contentFrame.BackgroundColor3 = Theme.BgCard
 contentFrame.BorderSizePixel = 0
 contentFrame.Parent = mainFrame
 
 local contentCorner = Instance.new("UICorner")
-contentCorner.CornerRadius = UDim.new(0, 10)
+contentCorner.CornerRadius = UDim.new(0, 12)
 contentCorner.Parent = contentFrame
+
+addGlow(contentFrame, Theme.PrimaryDark, 0.6)
 
 -- Scroll Frame
 local scrollFrame = Instance.new("ScrollingFrame")
@@ -286,8 +572,8 @@ scrollFrame.Size = UDim2.new(1, -10, 1, -10)
 scrollFrame.Position = UDim2.new(0, 5, 0, 5)
 scrollFrame.BackgroundTransparency = 1
 scrollFrame.BorderSizePixel = 0
-scrollFrame.ScrollBarThickness = 6
-scrollFrame.ScrollBarImageColor3 = Color3.fromRGB(0, 255, 255)
+scrollFrame.ScrollBarThickness = 5
+scrollFrame.ScrollBarImageColor3 = Theme.Primary
 scrollFrame.ScrollingDirection = Enum.ScrollingDirection.Y
 scrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 scrollFrame.Parent = contentFrame
@@ -301,23 +587,51 @@ listLayout.Parent = scrollFrame
 -- TOGGLE FUNCTIONALITY
 -- ========================================
 local isOpen = false
+
+-- Toggle button (mobile only)
 toggleButton.MouseButton1Click:Connect(function()
     isOpen = not isOpen
     mainFrame.Visible = isOpen
-    
+
     if isOpen then
-        toggleButton.Text = "📱"
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+        mainFrame.BackgroundTransparency = 0.4
+        TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+            BackgroundTransparency = 0.05
+        }):Play()
+        TweenService:Create(toggleButton, TweenInfo.new(0.2), {
+            BackgroundColor3 = Theme.PrimaryDark,
+            ImageColor3 = Theme.Text,
+        }):Play()
     else
-        toggleButton.Text = "📱"
-        toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        TweenService:Create(toggleButton, TweenInfo.new(0.2), {
+            BackgroundColor3 = Theme.BgMid,
+            ImageColor3 = Theme.Accent,
+        }):Play()
     end
 end)
 
 closeButton.MouseButton1Click:Connect(function()
     isOpen = false
     mainFrame.Visible = false
-    toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+    TweenService:Create(toggleButton, TweenInfo.new(0.2), {
+        BackgroundColor3 = Theme.BgMid,
+        ImageColor3 = Theme.Accent,
+    }):Play()
+end)
+
+-- Toggle key B (PC/keyboard users, since they have no toggle button)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    if input.KeyCode == Enum.KeyCode.B then
+        isOpen = not isOpen
+        mainFrame.Visible = isOpen
+        if isOpen then
+            mainFrame.BackgroundTransparency = 0.4
+            TweenService:Create(mainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+                BackgroundTransparency = 0.05
+            }):Play()
+        end
+    end
 end)
 
 -- ========================================
@@ -340,49 +654,82 @@ local currentCategory = "Idle"
 local allButtons = {}
 
 -- ========================================
--- CATEGORY BUTTON CREATION
+-- CATEGORY BUTTON CREATION (horizontal scroll, fixed cell size)
 -- ========================================
 local categoryButtons = {}
 
-local function createCategoryButton(category, icon)
+local function createCategoryButton(category, iconId)
     local button = Instance.new("TextButton")
     button.Name = category .. "Button"
-    button.Text = icon
+    button.Text = ""
     button.Font = Enum.Font.GothamBold
-    button.TextScaled = true
-    button.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+    button.BackgroundColor3 = Theme.BgCard
     button.BorderSizePixel = 0
+    button.Size = UDim2.new(0, 62, 0, 62)
     button.Parent = categoryContainer
-    
+
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 10)
+    corner.CornerRadius = UDim.new(0, 12)
     corner.Parent = button
-    
+
+    -- Icon image inside category button
+    local iconImg = Instance.new("ImageLabel")
+    iconImg.Name = "Icon"
+    iconImg.Image = iconId
+    iconImg.ImageColor3 = Theme.TextMuted
+    iconImg.Size = UDim2.new(0, 48, 0, 48)
+    iconImg.Position = UDim2.new(0.5, -24, 0, 6)
+    iconImg.BackgroundTransparency = 1
+    iconImg.Parent = button
+
     local label = Instance.new("TextLabel")
     label.Name = "Label"
     label.Text = category
     label.Font = Enum.Font.Gotham
-    label.TextSize = 10
-    label.TextColor3 = Color3.fromRGB(200, 200, 200)
+    label.TextScaled = true
+    label.TextColor3 = Theme.TextMuted
     label.BackgroundTransparency = 1
-    label.Size = UDim2.new(1, 0, 0.25, 0)
-    label.Position = UDim2.new(0, 0, 0.75, 0)
+    label.Size = UDim2.new(1, -4, 0, 16)
+    label.Position = UDim2.new(0, 2, 1, -18)
+    label.TextXAlignment = Enum.TextXAlignment.Center
     label.Parent = button
-    
+
+    local labelConstraint = Instance.new("UITextSizeConstraint")
+    labelConstraint.MinTextSize = 7
+    labelConstraint.MaxTextSize = 10
+    labelConstraint.Parent = label
+
     categoryButtons[category] = button
-    
+
+    button.MouseEnter:Connect(function()
+        if currentCategory ~= category then
+            TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Theme.BgLight}):Play()
+        end
+    end)
+    button.MouseLeave:Connect(function()
+        if currentCategory ~= category then
+            TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Theme.BgCard}):Play()
+        end
+    end)
+
     button.MouseButton1Click:Connect(function()
         currentCategory = category
         for cat, btn in pairs(categoryButtons) do
+            local ico = btn:FindFirstChild("Icon")
+            local lbl = btn:FindFirstChild("Label")
             if cat == category then
-                btn.BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.PrimaryDark}):Play()
+                if ico then ico.ImageColor3 = Theme.Accent end
+                if lbl then lbl.TextColor3 = Theme.Accent end
             else
-                btn.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
+                TweenService:Create(btn, TweenInfo.new(0.2), {BackgroundColor3 = Theme.BgCard}):Play()
+                if ico then ico.ImageColor3 = Theme.TextMuted end
+                if lbl then lbl.TextColor3 = Theme.TextMuted end
             end
         end
         refreshAnimationList()
     end)
-    
+
     return button
 end
 
@@ -397,7 +744,14 @@ createCategoryButton("Swim", CategoryIcons.Swim)
 createCategoryButton("SwimIdle", CategoryIcons.SwimIdle)
 
 -- Set Idle as default selected
-categoryButtons["Idle"].BackgroundColor3 = Color3.fromRGB(0, 200, 200)
+do
+    local btn = categoryButtons["Idle"]
+    btn.BackgroundColor3 = Theme.PrimaryDark
+    local ico = btn:FindFirstChild("Icon")
+    local lbl = btn:FindFirstChild("Label")
+    if ico then ico.ImageColor3 = Theme.Accent end
+    if lbl then lbl.TextColor3 = Theme.Accent end
+end
 
 -- ========================================
 -- ANIMATION BUTTON CREATION
@@ -405,36 +759,70 @@ categoryButtons["Idle"].BackgroundColor3 = Color3.fromRGB(0, 200, 200)
 function createAnimationButton(text, callback)
     local button = Instance.new("TextButton")
     button.Name = text
-    button.Text = text
+    button.Text = ""
     button.Font = Enum.Font.Gotham
     button.TextSize = 14
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.BackgroundColor3 = Color3.fromRGB(60, 60, 65)
-    button.Size = UDim2.new(1, 0, 0, 45)
+    button.TextColor3 = Theme.Text
+    button.BackgroundColor3 = Theme.BgMid
+    button.Size = UDim2.new(1, 0, 0, 46)
     button.BorderSizePixel = 0
-    button.TextXAlignment = Enum.TextXAlignment.Left
     button.Parent = scrollFrame
-    
-    local padding = Instance.new("UIPadding")
-    padding.PaddingLeft = UDim.new(0, 15)
-    padding.Parent = button
-    
+
     local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 8)
+    corner.CornerRadius = UDim.new(0, 10)
     corner.Parent = button
-    
+
+    -- Left accent dot
+    local dot = Instance.new("Frame")
+    dot.Size = UDim2.new(0, 4, 0, 24)
+    dot.Position = UDim2.new(0, 10, 0.5, -12)
+    dot.BackgroundColor3 = Theme.Primary
+    dot.BorderSizePixel = 0
+    dot.BackgroundTransparency = 0.3
+    dot.Parent = button
+    local dotCorner = Instance.new("UICorner")
+    dotCorner.CornerRadius = UDim.new(1, 0)
+    dotCorner.Parent = dot
+
+    -- Animation name label
+    local nameLabel = Instance.new("TextLabel")
+    nameLabel.Name = "NameLabel"
+    nameLabel.Text = text
+    nameLabel.Font = Enum.Font.Gotham
+    nameLabel.TextSize = 13
+    nameLabel.TextColor3 = Theme.Text
+    nameLabel.BackgroundTransparency = 1
+    nameLabel.Size = UDim2.new(1, -70, 1, 0)
+    nameLabel.Position = UDim2.new(0, 22, 0, 0)
+    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+    nameLabel.Parent = button
+
+    -- Apply icon on the right
+    local applyIcon = Instance.new("ImageLabel")
+    applyIcon.Image = "rbxassetid://14562122532"
+    applyIcon.ImageColor3 = Theme.PrimaryLight
+    applyIcon.Size = UDim2.new(0, 20, 0, 20)
+    applyIcon.Position = UDim2.new(1, -36, 0.5, -10)
+    applyIcon.BackgroundTransparency = 1
+    applyIcon.ImageTransparency = 0.5
+    applyIcon.Parent = button
+
     button.MouseEnter:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(80, 80, 85)}):Play()
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Theme.BgLight}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.15), {BackgroundColor3 = Theme.Accent, BackgroundTransparency = 0}):Play()
+        TweenService:Create(applyIcon, TweenInfo.new(0.15), {ImageTransparency = 0}):Play()
     end)
-    
+
     button.MouseLeave:Connect(function()
-        TweenService:Create(button, TweenInfo.new(0.2), {BackgroundColor3 = Color3.fromRGB(60, 60, 65)}):Play()
+        TweenService:Create(button, TweenInfo.new(0.15), {BackgroundColor3 = Theme.BgMid}):Play()
+        TweenService:Create(dot, TweenInfo.new(0.15), {BackgroundColor3 = Theme.Primary, BackgroundTransparency = 0.3}):Play()
+        TweenService:Create(applyIcon, TweenInfo.new(0.15), {ImageTransparency = 0.5}):Play()
     end)
-    
+
     button.MouseButton1Click:Connect(callback)
-    
+
     table.insert(allButtons, {button = button, text = text, category = currentCategory})
-    
+
     return button
 end
 
@@ -447,10 +835,10 @@ function refreshAnimationList()
             child:Destroy()
         end
     end
-    
+
     local searchText = searchBar.Text:lower()
     local count = 0
-    
+
     if Animations[currentCategory] then
         for animName, _ in pairs(Animations[currentCategory]) do
             if searchText == "" or animName:lower():find(searchText, 1, true) then
@@ -462,8 +850,8 @@ function refreshAnimationList()
             end
         end
     end
-    
-    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, count * 50)
+
+    scrollFrame.CanvasSize = UDim2.new(0, 0, 0, count * 51)
 end
 
 -- Search functionality
@@ -472,7 +860,7 @@ searchBar:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 -- ========================================
--- ANIMATION SYSTEM (Original Code)
+-- ANIMATION SYSTEM (Original Code - unchanged)
 -- ========================================
 local function freeze()
     local player = Players.LocalPlayer
@@ -505,33 +893,33 @@ end
 
 function setAnimation(animType, animName)
     freeze()
-    
+
     local player = Players.LocalPlayer
     local character = player.Character or player.CharacterAdded:Wait()
     local humanoid = character:WaitForChild("Humanoid")
     local animate = character:WaitForChild("Animate")
-    
+
     if not Animations[animType] or not Animations[animType][animName] then
         Notify("Error", "Animation not found!", 3)
         unfreeze()
         return
     end
-    
+
     local animData = Animations[animType][animName]
     local animFolder = animate:FindFirstChild(animType:lower())
-    
+
     if not animFolder then
         Notify("Error", animType .. " folder not found!", 3)
         unfreeze()
         return
     end
-    
+
     for _, child in ipairs(animFolder:GetChildren()) do
         if child:IsA("Animation") then
             child:Destroy()
         end
     end
-    
+
     if type(animData) == "table" then
         for i, id in ipairs(animData) do
             local anim = Instance.new("Animation")
@@ -545,25 +933,25 @@ function setAnimation(animType, animName)
         anim.AnimationId = "rbxassetid://" .. tostring(animData)
         anim.Parent = animFolder
     end
-    
+
     lastAnimations[animType] = animName
-    
+
     local saveData = {}
     for k, v in pairs(lastAnimations) do
         saveData[k] = v
     end
-    
+
     local success, err = pcall(function()
         writefile("MeWhenUrMom.json", HttpService:JSONEncode(saveData))
     end)
-    
+
     if not success then
         warn("Failed to save:", err)
     end
-    
+
     StopAnim()
     humanoid:ChangeState(Enum.HumanoidStateType.Landed)
-    
+
     wait(0.1)
     unfreeze()
 end
@@ -638,12 +1026,12 @@ end
 -- ========================================
 local function LoadAndUpdateAnimations()
     local onlineAnimations = {}
-    
+
     local function fetchOnlineAnimations()
         local success, result = pcall(function()
             return game:HttpGet("https://raw.githubusercontent.com/Sanzzy111/SanKur/refs/heads/main/database%20animasi")
         end)
-        
+
         if success and result then
             local func, err = loadstring(result)
             if func then
@@ -655,18 +1043,18 @@ local function LoadAndUpdateAnimations()
         end
         return nil
     end
-    
+
     onlineAnimations = fetchOnlineAnimations()
-    
+
     if not onlineAnimations then
         Notify("Database", "Failed to load online database", 3)
         return
     end
-    
+
     local newAnimationsFound = 0
     local updatedAnimations = 0
     local hadChanges = false
-    
+
     local function compareAnimData(a, b)
         if type(a) ~= type(b) then
             return false
@@ -683,13 +1071,13 @@ local function LoadAndUpdateAnimations()
             return tostring(a) == tostring(b)
         end
     end
-    
+
     for animType, typeAnims in pairs(onlineAnimations) do
         local fileTypeAnims = fileAnimations[animType] or {}
-        
+
         for animName, animData in pairs(typeAnims) do
             local fileData = fileTypeAnims[animName]
-            
+
             if not fileData then
                 newAnimationsFound = newAnimationsFound + 1
                 hadChanges = true
@@ -705,16 +1093,16 @@ local function LoadAndUpdateAnimations()
             end
         end
     end
-    
+
     if hadChanges then
         writefile("GreyLikesToSmellUrFeet.json", HttpService:JSONEncode(Animations))
         local newFileData = readfile("GreyLikesToSmellUrFeet.json")
         fileAnimations = HttpService:JSONDecode(newFileData)
-        
+
         refreshAnimationList()
-        
-        Notify("Database Update", 
-            string.format("New: %d | Updated: %d", newAnimationsFound, updatedAnimations), 
+
+        Notify("Database Update",
+            string.format("New: %d | Updated: %d", newAnimationsFound, updatedAnimations),
             5)
     else
         Notify("Database", "All animations up to date!", 3)
@@ -731,7 +1119,7 @@ Players.LocalPlayer.CharacterAdded:Connect(function(character)
         Notify("Error", "Animate script not found!", 5)
         return
     end
-    
+
     if lastAnimations.Idle then setAnimation("Idle", lastAnimations.Idle) end
     if lastAnimations.Walk then setAnimation("Walk", lastAnimations.Walk) end
     if lastAnimations.Run then setAnimation("Run", lastAnimations.Run) end
@@ -751,6 +1139,10 @@ refreshAnimationList()
 
 local lt = os.clock() - st
 Notify("Loaded", string.format("Ready in %.2f seconds", lt), 3)
-Notify("Welcome", "Click the icon to open UI! 📱", 5)
+if isTouchDevice then
+    Notify("Welcome", "Tap the icon to open UI!", 5)
+else
+    Notify("Welcome", "Press B to open UI!", 5)
+end
 
 end)
